@@ -30,9 +30,10 @@ typedef struct {
 
 Snake snake;
 Food food;
-int gameDelay = 100; 
-int score = 0;
+int gameDelay = 100; // 設定遊戲延遲時間，控制遊戲速度
+int score = 0;       // 遊戲分數
 
+// 初始化蛇的位置和方向
 void InitSnake() {
     snake.length = SNAKE_INITIAL_LENGTH;
     snake.dir = RIGHT;
@@ -42,6 +43,7 @@ void InitSnake() {
     }
 }
 
+// 隨機生成食物的位置，確保不會與蛇的身體重疊
 void GenerateFood() {
     bool collision;
     do {
@@ -58,6 +60,7 @@ void GenerateFood() {
     food.isEaten = false;
 }
 
+// 控制蛇的移動
 void MoveSnake() {
     Coordinate nextPosition = snake.body[0];
     switch (snake.dir) {
@@ -80,6 +83,7 @@ void MoveSnake() {
     snake.body[0] = nextPosition;
 }
 
+// 檢查蛇是否撞到自己或邊界
 bool CheckCollision() {
     Coordinate head = snake.body[0];
     if (head.x < 0 || head.x >= WINDOW_WIDTH || head.y < 0 || head.y >= WINDOW_HEIGHT) {
@@ -93,6 +97,7 @@ bool CheckCollision() {
     return false;
 }
 
+// 渲染遊戲畫面
 void Render(SDL_Renderer* renderer) {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
     SDL_RenderClear(renderer);
@@ -102,17 +107,15 @@ void Render(SDL_Renderer* renderer) {
     SDL_RenderFillRect(renderer, &foodRect);
 
     for (int i = 0; i < snake.length; i++) {
-        int red = 255 * i / snake.length;
-        int green = 255 - (255 * i / snake.length);
-        int blue = (255 * i / snake.length);
         SDL_Rect snakeRect = {snake.body[i].x, snake.body[i].y, SNAKE_BLOCK_SIZE, SNAKE_BLOCK_SIZE};
-        SDL_SetRenderDrawColor(renderer, red, green, blue, SDL_ALPHA_OPAQUE);
+        SDL_SetRenderDrawColor(renderer, 255 * i / snake.length, 255 - (255 * i / snake.length), (255 * i / snake.length), SDL_ALPHA_OPAQUE);
         SDL_RenderFillRect(renderer, &snakeRect);
     }
 
     SDL_RenderPresent(renderer);
 }
 
+// 更新蛇的移動方向，根據玩家的鍵盤輸入
 void UpdateDirection(SDL_Event* event) {
     if (event->type == SDL_KEYDOWN) {
         switch (event->key.keysym.sym) {
@@ -132,6 +135,7 @@ void UpdateDirection(SDL_Event* event) {
     }
 }
 
+// 主函數，初始化 SDL，創建視窗及渲染器，並進入遊戲主迴圈
 int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[]) {
     SDL_Window* window = NULL;
     SDL_Renderer* renderer = NULL;
@@ -149,7 +153,7 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
 
     window = SDL_CreateWindow("貪吃蛇", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_SHOWN);
     if (!window) {
-        fprintf(stderr, "無法創見視窗: %s\n", SDL_GetError());
+        fprintf(stderr, "無法創建視窗: %s\n", SDL_GetError());
         SDL_Quit();
         return 1;
     }
