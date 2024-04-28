@@ -30,7 +30,7 @@ typedef struct {
 
 Snake snake;
 Food food;
-int gameDelay = 100; // Set to normal difficulty speed
+int gameDelay = 100; 
 int score = 0;
 
 void InitSnake() {
