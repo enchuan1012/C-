@@ -15,4 +15,4 @@ set(SOURCE_FILES
 )
 
 add_executable(snake ${SOURCE_FILES})
-target_link_libraries(snake SDL2 SDL2_ttf)
+target_link_libraries(snake SDL2 SDL2_ttf m)
