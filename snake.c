@@ -11,58 +11,55 @@
 #define SNAKE_INITIAL_LENGTH 5
 #define SNAKE_MAX_LENGTH 100
 
-enum Direction { UP, DOWN, LEFT, RIGHT };
+typedef enum { UP, DOWN, LEFT, RIGHT } Direction;
 
 typedef struct {
     int x, y;
-} Coordinate;
+} Point;
 
 typedef struct {
-    Coordinate body[SNAKE_MAX_LENGTH];
+    Point body[SNAKE_MAX_LENGTH];
     int length;
-    enum Direction dir;
+    Direction dir;
 } Snake;
 
 typedef struct {
-    Coordinate position;
+    Point position;
     bool isEaten;
 } Food;
 
-Snake snake;
-Food food;
-int gameDelay = 100; // 設定遊戲延遲時間，控制遊戲速度
-int score = 0;       // 遊戲分數
+static Snake snake;
+static Food food;
+static int gameDelay = 100;
+static int score = 0;
 
-// 初始化蛇的位置和方向
-void InitSnake() {
+void InitializeSnake() {
     snake.length = SNAKE_INITIAL_LENGTH;
     snake.dir = RIGHT;
+    int center_x = WINDOW_WIDTH / 2;
+    int center_y = WINDOW_HEIGHT / 2;
     for (int i = 0; i < snake.length; i++) {
-        snake.body[i].x = WINDOW_WIDTH / 2 - i * SNAKE_BLOCK_SIZE;
-        snake.body[i].y = WINDOW_HEIGHT / 2;
+        snake.body[i].x = center_x - i * SNAKE_BLOCK_SIZE;
+        snake.body[i].y = center_y;
     }
 }
 
-// 隨機生成食物的位置，確保不會與蛇的身體重疊
-void GenerateFood() {
-    bool collision;
+void PlaceFood() {
+    srand((unsigned)time(NULL));
     do {
-        collision = false;
-        food.position.x = rand() % ((WINDOW_WIDTH - FOOD_SIZE) / FOOD_SIZE) * FOOD_SIZE;
-        food.position.y = rand() % ((WINDOW_HEIGHT - FOOD_SIZE) / FOOD_SIZE) * FOOD_SIZE;
+        food.position.x = rand() % (WINDOW_WIDTH / FOOD_SIZE) * FOOD_SIZE;
+        food.position.y = rand() % (WINDOW_HEIGHT / FOOD_SIZE) * FOOD_SIZE;
+        food.isEaten = false;
         for (int i = 0; i < snake.length; i++) {
             if (food.position.x == snake.body[i].x && food.position.y == snake.body[i].y) {
-                collision = true;
-                break;
+                continue;
             }
         }
-    } while (collision);
-    food.isEaten = false;
+    } while (food.isEaten);
 }
 
-// 控制蛇的移動
-void MoveSnake() {
-    Coordinate nextPosition = snake.body[0];
+void ProcessMovement() {
+    Point nextPosition = snake.body[0];
     switch (snake.dir) {
         case UP: nextPosition.y -= SNAKE_BLOCK_SIZE; break;
         case DOWN: nextPosition.y += SNAKE_BLOCK_SIZE; break;
@@ -71,8 +68,7 @@ void MoveSnake() {
     }
 
     if (nextPosition.x == food.position.x && nextPosition.y == food.position.y) {
-        snake.length++;
-        if (snake.length > SNAKE_MAX_LENGTH) snake.length = SNAKE_MAX_LENGTH;
+        snake.length = (snake.length < SNAKE_MAX_LENGTH) ? snake.length + 1 : SNAKE_MAX_LENGTH;
         food.isEaten = true;
         score += 10;
     }
@@ -83,9 +79,8 @@ void MoveSnake() {
     snake.body[0] = nextPosition;
 }
 
-// 檢查蛇是否撞到自己或邊界
-bool CheckCollision() {
-    Coordinate head = snake.body[0];
+bool CheckForCollision() {
+    Point head = snake.body[0];
     if (head.x < 0 || head.x >= WINDOW_WIDTH || head.y < 0 || head.y >= WINDOW_HEIGHT) {
         return true;
     }
@@ -97,56 +92,50 @@ bool CheckCollision() {
     return false;
 }
 
-// 渲染遊戲畫面
-void Render(SDL_Renderer* renderer) {
+void RenderGame(SDL_Renderer* renderer) {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
     SDL_RenderClear(renderer);
 
     SDL_Rect foodRect = {food.position.x, food.position.y, FOOD_SIZE, FOOD_SIZE};
-    SDL_SetRenderDrawColor(renderer, 255, 0, 0, SDL_ALPHA_OPAQUE);
+    SDL_SetRenderDrawColor(renderer, 255, 0, 0, SDL_ALPHA_OPAQUE); // 食物顏色保持鮮紅
     SDL_RenderFillRect(renderer, &foodRect);
 
+    // 為蛇身使用更加動態的漸變色
     for (int i = 0; i < snake.length; i++) {
+        float fraction = (float)i / snake.length;
+        int r = (int)(255 * fraction);  // 紅色從深到淺
+        int g = (int)(255 * (1 - fraction)); // 綠色從淺到深
+        int b = (int)(128 + 127 * sin(fraction * 3.14159)); // 藍色使用正弦函數變化以增加視覺效果
+
         SDL_Rect snakeRect = {snake.body[i].x, snake.body[i].y, SNAKE_BLOCK_SIZE, SNAKE_BLOCK_SIZE};
-        SDL_SetRenderDrawColor(renderer, 255 * i / snake.length, 255 - (255 * i / snake.length), (255 * i / snake.length), SDL_ALPHA_OPAQUE);
+        SDL_SetRenderDrawColor(renderer, r, g, b, SDL_ALPHA_OPAQUE);
         SDL_RenderFillRect(renderer, &snakeRect);
     }
 
     SDL_RenderPresent(renderer);
 }
-
-// 更新蛇的移動方向，根據玩家的鍵盤輸入
-void UpdateDirection(SDL_Event* event) {
+void UpdateDirectionFromInput(SDL_Event* event) {
     if (event->type == SDL_KEYDOWN) {
         switch (event->key.keysym.sym) {
-            case SDLK_UP:
-                if (snake.dir != DOWN) snake.dir = UP;
-                break;
-            case SDLK_DOWN:
-                if (snake.dir != UP) snake.dir = DOWN;
-                break;
-            case SDLK_LEFT:
-                if (snake.dir != RIGHT) snake.dir = LEFT;
-                break;
-            case SDLK_RIGHT:
-                if (snake.dir != LEFT) snake.dir = RIGHT;
-                break;
+            case SDLK_UP:    if (snake.dir != DOWN) snake.dir = UP; break;
+            case SDLK_DOWN:  if (snake.dir != UP) snake.dir = DOWN; break;
+            case SDLK_LEFT:  if (snake.dir != RIGHT) snake.dir = LEFT; break;
+            case SDLK_RIGHT: if (snake.dir != LEFT) snake.dir = RIGHT; break;
         }
     }
 }
 
-// 主函數，初始化 SDL，創建視窗及渲染器，並進入遊戲主迴圈
-int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[]) {
+int main() {
     SDL_Window* window = NULL;
     SDL_Renderer* renderer = NULL;
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        fprintf(stderr, "無法初始化SDL: %s\n", SDL_GetError());
+        fprintf(stderr, "SDL初始化失敗: %s\n", SDL_GetError());
         return 1;
     }
 
     if (TTF_Init() < 0) {
-        fprintf(stderr, "無法初始化SDL_ttf: %s\n", TTF_GetError());
+        fprintf(stderr, "SDL_ttf初始化失敗: %s\n", TTF_GetError());
         SDL_Quit();
         return 1;
     }
@@ -166,9 +155,8 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
         return 1;
     }
 
-    InitSnake();
-    GenerateFood();
-    srand((unsigned int)time(NULL));
+    InitializeSnake();
+    PlaceFood();
 
     bool quit = false;
     SDL_Event e;
@@ -177,21 +165,21 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
             if (e.type == SDL_QUIT) {
                 quit = true;
             } else {
-                UpdateDirection(&e);
+                UpdateDirectionFromInput(&e);
             }
         }
 
         if (food.isEaten) {
-            GenerateFood();
+            PlaceFood();
         }
 
-        MoveSnake();
-        if (CheckCollision()) {
+        ProcessMovement();
+        if (CheckForCollision()) {
             printf("遊戲結束\n分數: %d\n", score);
             break;
         }
 
-        Render(renderer);
+        RenderGame(renderer);
         SDL_Delay(gameDelay);
     }
 
